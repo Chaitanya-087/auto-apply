@@ -4,8 +4,8 @@ from selenium.webdriver.support import expected_conditions as EC
 from bs4 import BeautifulSoup
 from util import getJobData
 import json
+import math
 from string import Template
-from collections import deque
 from driver import Driver as driver
 import os
 
@@ -30,7 +30,7 @@ def parsePage(soup) -> bool:
         return False
 
     job_elems = soup.find_all('div', class_='srp-jobtuple-wrapper')
-    with open("jobs.jsonl", "a", encoding="utf-8") as f:
+    with open("./data/jobs.jsonl", "a", encoding="utf-8") as f:
         for job_elem in job_elems:
             job_data = getJobData(str(job_elem))
             if job_data:
@@ -61,9 +61,16 @@ if __name__ == "__main__":
             )
             soup = BeautifulSoup(driver.page_source, 'html.parser')
             page_elem = soup.find('div', class_='styles_pages__v1rAK')
-            if page_elem:
-                pages = page_elem.find_all('a')
-                for i in range(2, len(pages) + 1):
+            count_elem = soup.find('span', class_='styles_count-string__DlPaZ')
+            title_text = count_elem['title']  # "1 - 20 of 1014"
+            total_jobs = int(title_text.split('of')[-1].strip())
+
+            # Calculate total pages
+            jobs_per_page = 20
+            total_pages = math.ceil(total_jobs / jobs_per_page)
+            print(f"total_jobs: {total_jobs}, total_pages: {total_pages}")
+            if total_pages > 1:
+                for i in range(2, total_pages + 1):
                     url = URL.substitute(keyword=keyword.lower().replace(' ', '-'), p=i)
                     urls.append(url)
                 
@@ -81,8 +88,8 @@ if __name__ == "__main__":
         print(f"Saved {count} new jobs to jobs.jsonl")
 
     except Exception as e:
-        print('Error:', e)
-
+        driver.quit()
+        
     finally:
         print('Done')
         driver.quit()
